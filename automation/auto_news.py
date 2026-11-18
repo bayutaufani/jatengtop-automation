@@ -44,7 +44,7 @@ BREAKING_TRAFFIC_THRESHOLD = int(os.getenv("BREAKING_TRAFFIC_THRESHOLD", "200"))
 
 USER_AGENT = os.getenv(
     "USER_AGENT",
-    "Mozilla/5.0 (compatible; JatengTopAutoNews/1.0; +https://jawatengah.top)",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
 )
 
 GOOGLE_NEWS_RSS = "https://news.google.com/rss?hl=id&gl=ID&ceid=ID:id"
@@ -173,7 +173,17 @@ ALLOWED_TAGS = {
 TZ_WIB = timezone(timedelta(hours=7))
 
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": USER_AGENT, "Accept-Language": "id-ID,id;q=0.9"})
+SESSION.headers.update({
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": (SITE_BASE_URL + "/") if SITE_BASE_URL else "https://jawatengah.top/",
+    "Origin": SITE_BASE_URL or "https://jawatengah.top",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
+    "Upgrade-Insecure-Requests": "1",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -641,7 +651,13 @@ def api_call(action, method="GET", payload=None, params=None, timeout=90):
 
     headers = {
         "X-Automation-Token": AUTOMATION_TOKEN,
-        "Accept": "application/json",
+        "Accept": "application/json, text/plain, */*",
+        "X-Requested-With": "XMLHttpRequest",
+        "Origin": SITE_BASE_URL,
+        "Referer": SITE_BASE_URL + "/admin/",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
     }
 
     last_error = None
@@ -657,6 +673,11 @@ def api_call(action, method="GET", payload=None, params=None, timeout=90):
                 time.sleep(3 * attempt)
                 continue
 
+            if response.status_code == 403 and "imunify360" in response.text.lower():
+                raise RuntimeError(
+                    "Diblokir Imunify360 bot-protection. Minta Hostdata mengecualikan "
+                    "/api_automation.php dan /api_kurasi.php, atau whitelist GitHub Actions."
+                )
             if response.status_code != 200:
                 raise RuntimeError(f"API {action} HTTP {response.status_code}: {response.text[:300]}")
 
@@ -1464,6 +1485,13 @@ def main():
 
     log("INFO", f"Mulai mode {args.mode}. Sumber: Google Trends/News ID + RSS media.")
     log("INFO", "Server API: " + SITE_BASE_URL)
+
+    try:
+        warm_up = SESSION.get(SITE_BASE_URL + "/", timeout=15)
+        if warm_up.status_code == 403 and "imunify360" in warm_up.text.lower():
+            log("WARN", "Halaman utama juga diblokir Imunify360 untuk IP runner ini.")
+    except Exception:
+        pass
 
     try:
         ping = api_call("ping", timeout=30)
