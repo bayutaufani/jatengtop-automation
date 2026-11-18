@@ -67,6 +67,104 @@ BREAKING_KEYWORDS = [
     "kabur", "perang", "konflik", "pemilu", "curang", "resmi", "diumumkan",
 ]
 
+LISTICLE_MARKERS = (
+    "daftar", "rekomendasi", "wajib dikunjungi", "tempat wisata", "kuliner",
+    "ciri-ciri", "fakta", "habitat", "profil", "resep", "paling enak",
+    "terkenal enak", "ide", "inspirasi",
+)
+
+# Fokus wilayah: minimal 3 berita Jawa Tengah per jadwal, sisanya Nasional.
+JATENG_COUNT = int(os.getenv("JATENG_COUNT", "3"))
+
+JATENG_KEYWORDS = (
+    "jawa tengah", "jateng", "semarang", "solo", "surakarta", "magelang",
+    "pekalongan", "tegal", "kudus", "jepara", "demak", "kendal", "salatiga",
+    "wonosobo", "cilacap", "banyumas", "purwokerto", "purbalingga",
+    "banjarnegara", "kebumen", "temanggung", "boyolali", "klaten", "sragen",
+    "blora", "rembang", "pati", "grobogan", "brebes", "pemalang", "batang",
+    "karanganyar", "wonogiri", "sukoharjo", "kajen", "ungaran", "borobudur",
+    "dieng", "karimunjawa", "lasem", "muntilan", "weleri", "gemawang",
+)
+
+# Feed tambahan khusus Jawa Tengah.
+GOOGLE_JATENG_FEEDS = [
+    ("Google News Jateng", "https://news.google.com/rss/search?q=Jawa+Tengah&hl=id&gl=ID&ceid=ID:id"),
+    ("Google News Semarang", "https://news.google.com/rss/search?q=Semarang&hl=id&gl=ID&ceid=ID:id"),
+]
+
+GOOGLE_JATENG_BREAKING_FEEDS = [
+    ("Google News Jateng 1h", "https://news.google.com/rss/search?q=Jawa+Tengah+when%3A1h&hl=id&gl=ID&ceid=ID:id"),
+    ("Google News Semarang 1h", "https://news.google.com/rss/search?q=Semarang+when%3A1h&hl=id&gl=ID&ceid=ID:id"),
+]
+
+# Bing News RSS memberi URL asli di parameter ?url=, sehingga teks berita bisa diambil.
+BING_FEEDS = [
+    ("Bing Jateng", "https://www.bing.com/news/search?q=Jawa+Tengah&format=RSS&setlang=id-id&cc=ID&qft=sortbydate%3d%221%22"),
+    ("Bing Semarang", "https://www.bing.com/news/search?q=Semarang&format=RSS&setlang=id-id&cc=ID&qft=sortbydate%3d%221%22"),
+]
+
+FOREIGN_DOMAINS = (
+    "reuters.com", "apnews.com", "bbc.com", "bbc.co.uk", "cnn.com",
+    "bloomberg.com", "nytimes.com", "theguardian.com", "aljazeera.com",
+    "dw.com", "france24.com", "abcnews.go.com", "nbcnews.com", "cbsnews.com",
+    "washingtonpost.com", "wsj.com", "ft.com", "scmp.com",
+    "channelnewsasia.com", "straitstimes.com", "japantimes.co.jp",
+    "koreatimes.co.kr", "xinhuanet.com", "globaltimes.cn", "rt.com",
+    "foxnews.com", "usatoday.com", "time.com", "forbes.com", "cnbc.com",
+    "marketwatch.com", "yahoo.com",
+)
+
+INDONESIAN_DOMAIN_HINTS = (
+    ".id", "detik.com", "cnnindonesia.com", "antaranews.com", "tempo.co",
+    "kompas.com", "liputan6.com", "kumparan.com", "tribunnews.com",
+    "jawapos.com", "suaramerdeka.com", "solopos.com", "bisnis.com",
+    "kontan.co.id", "republika.co.id", "medcom.id", "okezone.com",
+    "sindonews.com", "viva.co.id", "merdeka.com", "cnbcindonesia.com",
+    "katadata.co.id", "tirto.id", "idntimes.com", "akurat.co", "genpi.co",
+    "rm.id", "koran.id", "surya.co.id", "beritajatim.com",
+)
+
+FOREIGN_TOPIC_MARKERS = (
+    "amerika serikat", "amerika", "inggris", "china", "tiongkok", "jepang",
+    "korea", "rusia", "ukraina", "israel", "palestina", "gaza", "iran",
+    "irak", "suriah", "eropa", "prancis", "jerman", "australia", "india",
+    "pakistan", "afrika", "kanada", "meksiko", "brazil", "argentina",
+    "turki", "mesir", "arab saudi", "uni emirat arab", "malaysia",
+    "singapura", "thailand", "filipina", "vietnam", "myanmar", "kamboja",
+    "laos", "brunei", "fbi", "cia", "nasa", "spacex", "elon musk", "trump",
+    "biden", "putin", "xi jinping", "pbb", "nato", "imf", "bank dunia",
+    "luar negeri", "internasional",
+)
+
+INDONESIA_TOPIC_MARKERS = (
+    "indonesia", "jakarta", "jawa", "jateng", "semarang", "solo", "surakarta",
+    "magelang", "pekalongan", "tegal", "kudus", "jepara", "demak", "kendal",
+    "salatiga", "wonosobo", "cilacap", "banyumas", "purwokerto", "purbalingga",
+    "banjarnegara", "kebumen", "temanggung", "boyolali", "klaten", "sragen",
+    "blora", "rembang", "pati", "grobogan", "brebes", "pemalang", "batang",
+    "karanganyar", "wonogiri", "sukoharjo", "presiden", "menteri", "dpr",
+    "dprd", "pemilu", "kpu", "polri", "tni", "rupiah", "bank indonesia",
+    "pemerintah", "gubernur", "walikota", "bupati", "kecamatan", "desa",
+    "warga", "timnas indonesia", "garuda", "pemkot", "pemprov",
+)
+
+INDONESIAN_STOPWORDS = {    "yang", "dan", "di", "ke", "dari", "untuk", "dengan", "pada", "dalam",
+    "ini", "itu", "tidak", "akan", "juga", "karena", "bisa", "telah",
+    "sebagai", "oleh", "namun", "tetapi", "atau", "saat", "setelah", "para",
+    "warga", "kata", "menurut", "lebih", "masih", "sudah", "baru", "bagi",
+    "demi", "hingga", "antara", "sebuah", "tersebut", "menjadi", "adalah",
+    "ada", "banyak", "kami", "kita", "mereka", "dia", "ia",
+}
+
+ENGLISH_STOPWORDS = {
+    "the", "and", "of", "to", "in", "is", "for", "on", "with", "that",
+    "this", "from", "by", "as", "at", "be", "will", "has", "have", "was",
+    "were", "are", "it", "an", "or", "but", "not", "they", "their", "his",
+    "her", "its", "about", "after", "before", "over", "under", "new", "says",
+    "said", "could", "would", "should", "more", "than", "into", "out", "up",
+    "down",
+}
+
 ALLOWED_TAGS = {
     "p", "h2", "h3", "h4", "ul", "ol", "li", "strong", "b", "em", "i",
     "a", "blockquote", "br", "figure", "figcaption",
@@ -168,6 +266,90 @@ def title_fingerprint(value):
     return " ".join(normalized.split()[:14])
 
 
+def domain_from_url(url):
+    try:
+        return urlparse(url or "").netloc.lower().split(":")[0]
+    except Exception:
+        return ""
+
+
+def is_foreign_domain(url):
+    domain = domain_from_url(url)
+    if not domain:
+        return False
+    return any(domain == item or domain.endswith("." + item) for item in FOREIGN_DOMAINS)
+
+
+def is_indonesian_domain(url):
+    domain = domain_from_url(url)
+    if not domain:
+        return False
+    for hint in INDONESIAN_DOMAIN_HINTS:
+        if hint.startswith("."):
+            if domain.endswith(hint):
+                return True
+        elif domain == hint or domain.endswith("." + hint):
+            return True
+    return False
+
+
+def is_indonesian_text(text):
+    text = (text or "").lower()
+    words = re.findall(r"[a-z]+", text)
+    if not words:
+        return False
+
+    id_score = sum(1 for word in words if word in INDONESIAN_STOPWORDS)
+    en_score = sum(1 for word in words if word in ENGLISH_STOPWORDS)
+
+    if en_score >= 2 and en_score > id_score:
+        return False
+    if id_score >= 2 and id_score >= en_score:
+        return True
+
+    markers = (
+        "indonesia", "jakarta", "jawa", "semarang", "solo", "surakarta",
+        "magelang", "pekalongan", "tegal", "kudus", "jepara", "demak",
+        "kendal", "salatiga", "wonosobo", "cilacap", "banyumas", "purwokerto",
+        "purbalingga", "banjarnegara", "kebumen", "temanggung", "boyolali",
+        "klaten", "sragen", "blora", "rembang", "pati", "grobogan", "brebes",
+        "pemalang", "batang", "karanganyar", "wonogiri", "sukoharjo",
+        "kecamatan", "polisi", "pemkot", "pemprov", "warga", "menteri",
+        "presiden", "pemilu", "harga", "pasar", "gubernur", "walikota",
+    )
+    return any(marker in text for marker in markers)
+
+
+def jateng_hits(text):
+    text = (text or "").lower()
+    return sum(1 for keyword in JATENG_KEYWORDS if keyword in text)
+
+
+def is_jateng_candidate(title, description):
+    return jateng_hits(title) > 0 or jateng_hits(description) >= 2
+
+
+def is_international_topic(title, description):
+    text = ((title or "") + " " + (description or "")).lower()
+    has_foreign = any(marker in text for marker in FOREIGN_TOPIC_MARKERS)
+    has_indonesia = any(marker in text for marker in INDONESIA_TOPIC_MARKERS)
+    return has_foreign and not has_indonesia
+
+
+def is_listicle_title(title):
+    text = (title or "").lower().strip()
+    if re.match(r"^\d+\s", text):
+        return True
+    return any(marker in text for marker in LISTICLE_MARKERS)
+
+
+def resolve_bing_url(url):
+    if "bing.com/news/apiclick" not in (url or ""):
+        return url
+    query = dict(parse_qsl(urlparse(url).query, keep_blank_values=True))
+    return query.get("url") or url
+
+
 def extract_keywords(text, limit=4):
     text = normalize_title(text)
     words = [word for word in text.split() if len(word) > 3]
@@ -203,7 +385,7 @@ def parse_feed(xml_bytes, feed_name):
             continue
 
         title = child_text(element, "title")
-        link = child_text(element, "link")
+        link = resolve_bing_url(child_text(element, "link"))
         description = child_text(element, "description")
         published_raw = child_text(element, "pubDate")
         published = parse_date(published_raw)
@@ -273,10 +455,40 @@ def collect_candidates(mode):
     seen_titles = set()
 
     def add(candidate):
-        candidate["title"] = re.sub(r"\s+", " ", str(candidate.get("title", ""))).strip()
-        fingerprint = title_fingerprint(candidate.get("title", ""))
+        title = re.sub(r"\s+", " ", str(candidate.get("title", ""))).strip()
+        candidate["title"] = title
+        if not title:
+            return
+
+        fingerprint = title_fingerprint(title)
         if not fingerprint or fingerprint in seen_titles:
             return
+
+        source_url = candidate.get("source_url", "")
+        publisher_url = candidate.get("publisher_url") or source_url
+
+        # Buang sumber luar negeri.
+        if is_foreign_domain(source_url) or is_foreign_domain(publisher_url):
+            return
+
+        combined = " ".join([
+            title,
+            candidate.get("description", ""),
+            candidate.get("trend", ""),
+        ])
+        if not is_indonesian_text(combined):
+            return
+
+        source_ok = is_indonesian_domain(source_url) or is_indonesian_domain(publisher_url)
+        if not source_ok and len(combined.split()) < 8:
+            return
+
+        candidate["is_jateng"] = is_jateng_candidate(title, candidate.get("description", ""))
+        if not candidate["is_jateng"] and is_international_topic(title, candidate.get("description", "")):
+            return
+        candidate["is_listicle"] = is_listicle_title(title)
+        candidate["suggested_category"] = "Jawa Tengah" if candidate["is_jateng"] else "Nasional"
+
         seen_titles.add(fingerprint)
         candidates.append(candidate)
 
@@ -284,10 +496,12 @@ def collect_candidates(mode):
     for trend in fetch_feed("Google Trends ID", GOOGLE_TRENDS_RSS):
         news_items = trend.get("news_items") or []
         if news_items:
-            for index, news in enumerate(news_items[:3]):
+            for news in news_items[:3]:
+                news_url = news.get("url") or trend["url"]
                 add({
                     "title": news.get("title") or trend["title"],
-                    "source_url": news.get("url") or trend["url"],
+                    "source_url": news_url,
+                    "publisher_url": news_url,
                     "source_name": news.get("source") or trend.get("source_name") or "Google Trends",
                     "description": news.get("snippet") or trend.get("snippet", ""),
                     "published": trend.get("published"),
@@ -301,6 +515,7 @@ def collect_candidates(mode):
             add({
                 "title": trend["title"],
                 "source_url": trend["url"],
+                "publisher_url": trend["url"],
                 "source_name": trend.get("source_name") or "Google Trends",
                 "description": trend.get("snippet", ""),
                 "published": trend.get("published"),
@@ -319,6 +534,7 @@ def collect_candidates(mode):
             add({
                 "title": item["title"],
                 "source_url": item["url"],
+                "publisher_url": item["url"],
                 "source_name": item.get("source_name") or feed_name,
                 "description": item.get("snippet", ""),
                 "published": item.get("published"),
@@ -329,31 +545,55 @@ def collect_candidates(mode):
                 "is_google_news": False,
             })
 
-    # 3. Google News Indonesia (judul populer; link berupa redirect Google)
-    google_url = GOOGLE_BREAKING_RSS if mode == "breaking" else GOOGLE_NEWS_RSS
-    for item in fetch_feed("Google News ID", google_url):
-        if not item.get("url"):
-            continue
-        title = re.sub(r"\s+-\s+[^-]{2,60}$", "", item["title"]).strip()
-        add({
-            "title": title,
-            "source_url": item["url"],
-            "source_name": item.get("source_name") or "Google News",
-            "description": item.get("snippet", ""),
-            "published": item.get("published"),
-            "traffic": item.get("traffic", 0),
-            "feed_image": item.get("feed_image", ""),
-            "origin": "google_news",
-            "trend": "",
-            "is_google_news": True,
-        })
+    # 3. Bing News RSS khusus Jawa Tengah (URL asli sudah diekstrak)
+    for feed_name, feed_url in BING_FEEDS:
+        for item in fetch_feed(feed_name, feed_url):
+            if not item.get("url"):
+                continue
+            add({
+                "title": item["title"],
+                "source_url": item["url"],
+                "publisher_url": item["url"],
+                "source_name": item.get("source_name") or feed_name,
+                "description": item.get("snippet", ""),
+                "published": item.get("published"),
+                "traffic": item.get("traffic", 0),
+                "feed_image": item.get("feed_image", ""),
+                "origin": "bing",
+                "trend": "",
+                "is_google_news": False,
+            })
+
+    # 4. Google News: nasional + pencarian khusus Jawa Tengah
+    google_feeds = [("Google News ID", GOOGLE_BREAKING_RSS if mode == "breaking" else GOOGLE_NEWS_RSS)]
+    google_feeds += GOOGLE_JATENG_BREAKING_FEEDS if mode == "breaking" else GOOGLE_JATENG_FEEDS
+
+    for feed_name, feed_url in google_feeds:
+        for item in fetch_feed(feed_name, feed_url):
+            if not item.get("url"):
+                continue
+            title = re.sub(r"\s+-\s+[^-]{2,60}$", "", item["title"]).strip()
+            add({
+                "title": title,
+                "source_url": item["url"],
+                "publisher_url": item.get("source_url", ""),
+                "source_name": item.get("source_name") or "Google News",
+                "description": item.get("snippet", ""),
+                "published": item.get("published"),
+                "traffic": item.get("traffic", 0),
+                "feed_image": item.get("feed_image", ""),
+                "origin": "google_news",
+                "trend": "",
+                "is_google_news": True,
+            })
 
     if mode == "breaking":
         filtered = []
         cutoff = datetime.now(TZ_WIB) - timedelta(hours=3)
         for candidate in candidates:
-            if candidate.get("is_google_news"):
+            if candidate.get("is_listicle"):
                 continue
+
             published = candidate.get("published")
             if published and published < cutoff:
                 continue
@@ -363,13 +603,27 @@ def collect_candidates(mode):
             if candidate.get("traffic", 0) >= BREAKING_TRAFFIC_THRESHOLD or has_keyword:
                 filtered.append(candidate)
 
-        # Prioritaskan tren tertinggi
-        filtered.sort(key=lambda row: row.get("traffic", 0), reverse=True)
+        filtered.sort(
+            key=lambda row: (
+                1 if row.get("is_jateng") else 0,
+                row.get("traffic", 0),
+                row.get("published") or datetime(1970, 1, 1, tzinfo=TZ_WIB),
+            ),
+            reverse=True,
+        )
         return filtered
 
-    # Mode scheduled: prioritaskan trends, lalu media langsung, lalu Google News
-    priority = {"trends": 0, "direct": 1, "google_news": 2}
-    candidates.sort(key=lambda row: (priority.get(row.get("origin"), 9), -row.get("traffic", 0)))
+    # Mode scheduled: Jawa Tengah lebih dulu, lalu nasional, lalu tren.
+    priority = {"trends": 0, "direct": 1, "bing": 2, "google_news": 3}
+    candidates.sort(
+        key=lambda row: (
+            1 if row.get("is_jateng") else 0,
+            0 if row.get("is_listicle") else 1,
+            -priority.get(row.get("origin"), 9),
+            row.get("traffic", 0),
+        ),
+        reverse=True,
+    )
     return candidates
 
 
@@ -683,10 +937,18 @@ def build_prompt(candidate, details, related, categories, mode):
         )
     related_text = "\n\n".join(related_lines) or "Tidak ada berita internal terkait."
 
-    category_names = ", ".join(categories) if categories else "Jawa Tengah, Nasional, Peristiwa, Ekonomi, Wisata, Politik, Bisnis, Daerah"
+    category_names = ", ".join(categories) if categories else "Jawa Tengah, Nasional"
+    suggested_category = candidate.get("suggested_category") or (
+        "Jawa Tengah" if candidate.get("is_jateng") else "Nasional"
+    )
 
     system = (
         "Anda editor senior Jateng TOP, portal berita berbahasa Indonesia yang menjunjung akurasi. "
+        "WAJIB menulis 100% dalam bahasa Indonesia baku. Seluruh judul, isi, meta description, dan caption "
+        "harus berbahasa Indonesia. Jangan pernah menulis dalam bahasa Inggris. Jika sumber berbahasa Inggris, "
+        "terjemahkan faktanya ke bahasa Indonesia. "
+        "Fokus hanya pada peristiwa di Jawa Tengah atau peristiwa nasional Indonesia. "
+        "Jangan membahas berita internasional kecuali berkaitan langsung dengan Indonesia. "
         "Tulis ulang informasi menjadi artikel orisinal bergaya jurnalistik, SEO-friendly, dan mudah dibaca. "
         "Jangan menyalin kalimat sumber. Jangan mengarang nama, angka, kutipan, atau kronologi yang tidak didukung fakta. "
         "Jika informasi terbatas, gunakan bahasa hati-hati dan sebutkan keterbatasan data. "
@@ -708,26 +970,39 @@ Berita internal Jateng TOP yang relevan (untuk konteks dan internal linking):
 {related_text}
 
 Kategori tersedia: {category_names}
+Kategori yang WAJIB dipakai: {suggested_category}
 
 Tugas:
-1. Tulis artikel {length_instruction} dalam bahasa Indonesia.
-2. Struktur HTML: paragraf pembuka, minimal 2 subjudul <h2>, konteks, dampak, dan penutup.
-3. Jika ada berita internal relevan, sertakan minimal 1 tautan internal memakai URL yang diberikan dengan anchor alami.
-4. Judul maksimal 110 karakter, informatif, tidak clickbait berlebihan.
-5. Meta description 150-160 karakter.
-6. Pilih tepat satu kategori dari daftar kategori tersedia.
-7. Buat caption Instagram dan TikTok siap pakai, boleh menyertakan hashtag.
-8. Jangan mencantumkan instruksi ini atau menulis "sebagai AI".
+1. Tulis artikel {length_instruction} DALAM BAHASA INDONESIA.
+2. Fokus pada wilayah Jawa Tengah atau nasional Indonesia. Abaikan peristiwa luar negeri.
+3. Struktur HTML: paragraf pembuka, minimal 2 subjudul <h2>, konteks, dampak, dan penutup.
+4. Jika ada berita internal relevan, sertakan minimal 1 tautan internal memakai URL yang diberikan dengan anchor alami.
+5. Judul maksimal 110 karakter, informatif, tidak clickbait berlebihan.
+6. Meta description 150-160 karakter.
+7. Gunakan tepat kategori: {suggested_category}.
+8. Buat caption Instagram dan TikTok siap pakai dalam bahasa Indonesia, boleh menyertakan hashtag.
+9. Jangan mencantumkan instruksi ini atau menulis "sebagai AI".
+10. Jangan menulis satu kalimat pun dalam bahasa Inggris.
 
 Balas dengan skema JSON:
-{{"title":"...","meta_description":"...","content":"<p>...</p>","category":"...","tags":["..."],"caption_instagram":"...","caption_tiktok":"..."}}"""
+{{"title":"...","meta_description":"...","content":"<p>...</p>","category":"{suggested_category}","tags":["..."],"caption_instagram":"...","caption_tiktok":"..."}}"""
 
     return system, user
 
 
-def fallback_article(candidate, details, related):
+def fallback_article(candidate, details, related, category):
     title = strip_html(candidate.get("title") or "", 120) or "Perkembangan Terbaru"
+    if not is_indonesian_text(title):
+        title = (
+            "Perkembangan Terbaru di Jawa Tengah"
+            if category == "Jawa Tengah"
+            else "Perkembangan Terbaru Nasional"
+        )
+
     source_text = details.get("text") or candidate.get("description") or ""
+    if source_text and not is_indonesian_text(source_text):
+        source_text = ""
+
     sentences = re.split(r"(?<=[.!?])\s+", strip_html(source_text))
     sentences = [sentence.strip() for sentence in sentences if len(sentence.strip()) > 60]
 
@@ -757,7 +1032,6 @@ def fallback_article(candidate, details, related):
     )
 
     excerpt = strip_html(lead, 155)
-    category = related[0].get("category") if related else ""
     captions = make_captions(
         title,
         excerpt,
@@ -777,6 +1051,14 @@ def fallback_article(candidate, details, related):
 
 
 def generate_article(candidate, categories, mode):
+    suggested_category = candidate.get("suggested_category") or (
+        "Jawa Tengah" if candidate.get("is_jateng") else "Nasional"
+    )
+
+    if not is_indonesian_text(candidate.get("title", "")):
+        log("WARN", f"Kandidat dilewati (judul bukan bahasa Indonesia): {candidate.get('title', '')[:80]}")
+        return None
+
     details = fetch_article_details(candidate)
     keywords = extract_keywords(candidate.get("title", "") + " " + candidate.get("trend", ""), 4)
 
@@ -794,36 +1076,54 @@ def generate_article(candidate, categories, mode):
     if raw:
         parsed = parse_json_response(raw)
         if parsed and parsed.get("title") and parsed.get("content"):
-            article = {
+            candidate_article = {
                 "title": str(parsed.get("title", "")).strip(),
                 "meta_description": str(parsed.get("meta_description", "")).strip(),
                 "content": sanitize_html(str(parsed.get("content", ""))),
-                "category": str(parsed.get("category", "")).strip(),
+                "category": suggested_category,
                 "tags": parsed.get("tags") if isinstance(parsed.get("tags"), list) else keywords,
                 "caption_instagram": str(parsed.get("caption_instagram", "")).strip(),
                 "caption_tiktok": str(parsed.get("caption_tiktok", "")).strip(),
                 "engine": provider or "llm",
             }
+            if is_indonesian_text(candidate_article["title"] + " " + candidate_article["content"]):
+                article = candidate_article
+            else:
+                log("WARN", "Output LLM terdeteksi bukan bahasa Indonesia; memakai fallback.")
 
     if article is None or not article.get("content") or not article.get("title"):
-        article = fallback_article(candidate, details, related)
+        article = fallback_article(candidate, details, related, suggested_category)
+
+    article["category"] = suggested_category
+    if not is_indonesian_text(article.get("title", "") + " " + article.get("content", "")):
+        log("WARN", f"Artikel dilewati karena bukan bahasa Indonesia: {article.get('title', '')[:80]}")
+        return None
+
+    if not is_indonesian_text(article.get("meta_description", "")):
+        article["meta_description"] = strip_html(article.get("content", ""), 155)
+
+    if not is_indonesian_text(article.get("caption_instagram", "")):
+        article["caption_instagram"] = ""
+    if not is_indonesian_text(article.get("caption_tiktok", "")):
+        article["caption_tiktok"] = ""
 
     article_url = SITE_BASE_URL + "/"
     if not article.get("caption_instagram") or not article.get("caption_tiktok"):
-        captions = make_captions(article["title"], article["meta_description"], article_url, article.get("tags"))
+        captions = make_captions(article["title"], article.get("meta_description", ""), article_url, article.get("tags"))
         article["caption_instagram"] = article.get("caption_instagram") or captions["instagram"]
         article["caption_tiktok"] = article.get("caption_tiktok") or captions["tiktok"]
 
     final_url = details.get("canonical") or candidate.get("source_url", "")
-    if final_url.startswith("https://news.google.com"):
-        final_url = candidate.get("source_url", "")
+    if "news.google.com" in final_url:
+        final_url = candidate.get("publisher_url") or candidate.get("source_url", "")
 
     return {
         "title": article["title"][:255],
         "content": article["content"],
-        "meta_description": article["meta_description"][:255],
-        "category": article.get("category") or "",
-        "categories": [article.get("category")] if article.get("category") else [],
+        "meta_description": article.get("meta_description", "")[:255],
+        "category": suggested_category,
+        "categories": [suggested_category],
+        "location": "Jawa Tengah" if candidate.get("is_jateng") else "",
         "tags": article.get("tags", []),
         "captions": {
             "instagram": article.get("caption_instagram", ""),
@@ -846,6 +1146,42 @@ def generate_article(candidate, categories, mode):
 # ---------------------------------------------------------------------------
 # MAIN
 # ---------------------------------------------------------------------------
+def select_candidates(fresh, limit, mode):
+    if not fresh:
+        return []
+
+    if mode == "breaking":
+        ordered = sorted(
+            fresh,
+            key=lambda row: (
+                1 if row.get("is_jateng") else 0,
+                row.get("traffic", 0),
+            ),
+            reverse=True,
+        )
+        return ordered[:limit]
+
+    jateng = sorted(
+        [row for row in fresh if row.get("is_jateng")],
+        key=lambda row: (0 if row.get("is_listicle") else 1, row.get("traffic", 0)),
+        reverse=True,
+    )
+    national = sorted(
+        [row for row in fresh if not row.get("is_jateng")],
+        key=lambda row: (0 if row.get("is_listicle") else 1, row.get("traffic", 0)),
+        reverse=True,
+    )
+
+    selected = jateng[:min(JATENG_COUNT, len(jateng))]
+    remaining = limit - len(selected)
+    selected.extend(national[:remaining])
+
+    if len(selected) < limit:
+        selected.extend(jateng[JATENG_COUNT:JATENG_COUNT + (limit - len(selected))])
+
+    return selected[:limit]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Otomasi berita Jateng TOP")
     parser.add_argument("--mode", choices=["scheduled", "breaking"], default="scheduled")
@@ -889,11 +1225,14 @@ def main():
         return 1
 
     limit = BREAKING_MAX if args.mode == "breaking" else NEWS_COUNT
-    selected = fresh[:limit]
+    selected = select_candidates(fresh, limit, args.mode)
 
     if not selected:
         log("INFO", "Semua kandidat sudah pernah diberitakan. Tidak ada artikel baru.")
         return 0
+
+    jateng_total = sum(1 for row in selected if row.get("is_jateng"))
+    log("INFO", f"Dipilih {len(selected)} kandidat: {jateng_total} Jawa Tengah, {len(selected) - jateng_total} Nasional.")
 
     if args.mode == "scheduled" and len(selected) < NEWS_COUNT:
         log("WARN", f"Hanya {len(selected)} kandidat baru tersedia dari target {NEWS_COUNT}.")
@@ -902,7 +1241,12 @@ def main():
     for index, candidate in enumerate(selected, start=1):
         log("INFO", f"[{index}/{len(selected)}] Menulis: {candidate.get('title')}")
         try:
-            items.append(generate_article(candidate, categories, args.mode))
+            article = generate_article(candidate, categories, args.mode)
+            if article:
+                items.append(article)
+                log("INFO", f"  -> {article.get('engine')} | {article.get('category')} | {article.get('title', '')[:60]}")
+            else:
+                log("WARN", "Artikel dilewati karena validasi bahasa/wilayah.")
         except Exception as exc:
             log("ERROR", f"Gagal menulis artikel: {exc}")
         time.sleep(1.5)
