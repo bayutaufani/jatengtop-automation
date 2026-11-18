@@ -1107,6 +1107,10 @@ def ensure_article_standards(article, keyword, mode, lead_hint=""):
     keyword_display = display_keyword(keyword)
     soup = BeautifulSoup(article.get("content", ""), "html.parser")
 
+    # H1 hanya untuk judul artikel; ubah H1 di isi menjadi H2.
+    for h1 in soup.find_all("h1"):
+        h1.name = "h2"
+
     # Buang heading generik yang tidak diinginkan.
     generic_headings = {
         "kronologi dan konteks",
@@ -1115,8 +1119,12 @@ def ensure_article_standards(article, keyword, mode, lead_hint=""):
         "kesimpulan",
     }
     for heading in soup.find_all(["h2", "h3"]):
-        if normalize_phrase(heading.get_text(" ", strip=True)) in generic_headings:
+        heading_text = normalize_phrase(heading.get_text(" ", strip=True))
+        if heading_text in generic_headings:
             heading.decompose()
+            continue
+        if re.match(r"^mengapa .+ jadi sorotan\??$", heading_text):
+            heading.string = f"Memahami {keyword_display}"
 
     source_names = (
         "kompas", "detik", "antara", "tempo", "tribun", "cnn indonesia",
@@ -1135,6 +1143,9 @@ def ensure_article_standards(article, keyword, mode, lead_hint=""):
             paragraph.decompose()
             continue
         if any(phrase in text for phrase in previous_article_phrases):
+            paragraph.decompose()
+            continue
+        if "dampak" in text and "menjadi bagian penting" in text:
             paragraph.decompose()
             continue
         source_cue = any(cue in text for cue in ("menurut", "melansir", "dilansir", "melaporkan", "dalam laporan"))
@@ -1163,7 +1174,7 @@ def ensure_article_standards(article, keyword, mode, lead_hint=""):
     )
     if keyword_norm and not has_heading_keyword:
         heading = soup.new_tag("h2")
-        heading.string = f"Mengapa {keyword_display} Jadi Sorotan?"
+        heading.string = f"Memahami {keyword_display}"
         target = soup.find("p")
         if target:
             target.insert_after(heading)
@@ -1172,14 +1183,6 @@ def ensure_article_standards(article, keyword, mode, lead_hint=""):
 
     body_text = " ".join(paragraph.get_text(" ", strip=True) for paragraph in soup.find_all("p"))
     keyword_count = body_text.lower().count(keyword.lower()) if keyword else 0
-
-    if keyword and keyword_count < 3:
-        extra = soup.new_tag("p")
-        extra.string = (
-            f"Dampak {keyword_display} terhadap masyarakat menjadi bagian penting dari pemberitaan ini. "
-            f"Respons pihak terkait dan data terbaru mengenai {keyword_display} turut menentukan arah perkembangan."
-        )
-        soup.append(extra)
 
     article["content"] = str(soup)
     meta_source = article.get("meta_description") or body_text
@@ -1211,6 +1214,103 @@ def ensure_article_standards(article, keyword, mode, lead_hint=""):
 # ---------------------------------------------------------------------------
 # GENERATOR
 # ---------------------------------------------------------------------------
+def article_seo_issues(article, keyword, mode):
+    issues = []
+    keyword_norm = normalize_phrase(keyword)
+    content = article.get("content", "")
+    soup = BeautifulSoup(content, "html.parser")
+
+    if soup.find("h1"):
+        issues.append("Isi artikel mengandung H1. Judul artikel sudah menjadi H1; hapus H1 dari isi.")
+
+    plain_text = strip_html(content)
+    total_words = len(re.findall(r"\w+", plain_text))
+    if total_words < 500:
+        issues.append(f"Total artikel {total_words} kata; minimal 500 kata.")
+    elif total_words > 1500:
+        issues.append(f"Total artikel {total_words} kata; maksimal 1500 kata.")
+
+    headings = soup.find_all(["h2", "h3"])
+    if not any(keyword_norm and keyword_norm in normalize_phrase(h.get_text(" ", strip=True)) for h in headings):
+        issues.append("Tidak ada H2/H3 yang mengandung primary keyword.")
+
+    body_html = re.sub(r"<h[23]\b[^>]*>.*?</h[23]>", "", content, flags=re.IGNORECASE | re.DOTALL)
+    body_text = strip_html(body_html)
+    keyword_count = body_text.lower().count(keyword.lower()) if keyword else 0
+    if keyword and keyword_count < 3:
+        issues.append(f"Primary keyword hanya muncul {keyword_count}x di badan; minimal 3x.")
+
+    meta = article.get("meta_description", "")
+    if len(meta) > 160:
+        issues.append(f"Meta description {len(meta)} karakter; maksimal 160.")
+    if keyword_norm and keyword_norm not in normalize_phrase(meta):
+        issues.append("Meta description belum mengandung primary keyword.")
+
+    current_words = 0
+    current_title = "intro"
+    for block in soup.find_all(["h2", "h3", "p", "ul", "ol", "blockquote"]):
+        if block.name in ("h2", "h3"):
+            if current_words > 250:
+                issues.append(f"Bagian '{current_title}' memiliki {current_words} kata; maksimal 250 kata per bagian.")
+            current_words = 0
+            current_title = block.get_text(" ", strip=True)[:50] or "bagian"
+        else:
+            current_words += len(re.findall(r"\w+", block.get_text(" ", strip=True)))
+    if current_words > 250:
+        issues.append(f"Bagian '{current_title}' memiliki {current_words} kata; maksimal 250 kata per bagian.")
+
+    return issues
+
+
+def repair_article_with_llm(article, keyword, categories, mode, issues, details):
+    system = (
+        "Anda editor senior Jateng TOP. Perbaiki artikel berikut sesuai daftar masalah. "
+        "Jangan menambah fakta, nama, angka, atau kutipan baru. Jangan menyebut media/sumber. "
+        "Jangan menyertakan tautan/URL. Artikel harus berdiri sendiri. "
+        "Gunakan bahasa Indonesia baku, profesional, dan enak dibaca. "
+        "H1 hanya untuk judul artikel, jangan menulis H1 di isi. "
+        "Intro setelah judul maksimal 250 kata. Setiap bagian di bawah H2/H3 maksimal 250 kata; "
+        "jika lebih, pecah menjadi subbagian H3. Total artikel 500-1500 kata. "
+        "Output HARUS JSON valid tanpa markdown dan tanpa code fence."
+    )
+    category_names = ", ".join(categories) if categories else "Jawa Tengah, Nasional"
+    user = f"""Primary keyword: {keyword}
+Kategori: {article.get('category') or 'Nasional'}
+Kategori tersedia: {category_names}
+Daftar masalah yang harus diperbaiki:
+{chr(10).join('- ' + issue for issue in issues)}
+
+Artikel saat ini:
+JUDUL: {article.get('title', '')}
+META: {article.get('meta_description', '')}
+ISI:
+{article.get('content', '')[:12000]}
+
+Bahan fakta (jangan menambah fakta di luar ini):
+{details.get('text', '')[:4000]}
+
+Perbaiki hanya masalah di atas. Pertahankan fakta. Pastikan primary keyword muncul minimal 3x di badan, satu H2/H3 mengandung primary keyword, meta 140-160 karakter, total 500-1500 kata, dan setiap bagian maksimal 250 kata.
+Balas dengan skema JSON:
+{{"title":"...","primary_keyword":"{keyword}","meta_description":"...","content":"<p>...</p><h2>...</h2><p>...</p>","caption_instagram":"...","caption_tiktok":"..."}}"""
+    provider, raw = call_llm(system, user)
+    if not raw:
+        return None
+    parsed = parse_json_response(raw)
+    if not parsed or not parsed.get("content") or not parsed.get("title"):
+        return None
+    content = sanitize_html(str(parsed.get("content", "")))
+    if not content:
+        return None
+    return {
+        "title": str(parsed.get("title", "")).strip(),
+        "meta_description": str(parsed.get("meta_description", "")).strip(),
+        "content": content,
+        "caption_instagram": str(parsed.get("caption_instagram", "")).strip(),
+        "caption_tiktok": str(parsed.get("caption_tiktok", "")).strip(),
+        "engine": provider or article.get("engine", "llm"),
+    }
+
+
 def build_prompt(candidate, details, categories, mode):
     category_names = ", ".join(categories) if categories else "Jawa Tengah, Nasional"
     suggested_category = candidate.get("suggested_category") or (
@@ -1234,9 +1334,9 @@ def build_prompt(candidate, details, categories, mode):
     )
 
     if mode == "breaking":
-        length_rules = "300-500 kata, 18-30 kalimat, 4-7 paragraf, 1-2 subjudul H2/H3"
+        length_rules = "500-700 kata, 30-45 kalimat, 6-10 paragraf, H2/H3 bebas"
     else:
-        length_rules = "600-900 kata, 35-55 kalimat, 6-10 paragraf, 2-4 subjudul H2/H3"
+        length_rules = "800-1200 kata, 40-60 kalimat, 8-14 paragraf, H2/H3 bebas"
 
     user = f"""Topik berita: {candidate.get('title')}
 Ringkasan bahan: {details.get('description') or candidate.get('description') or '-'}
@@ -1253,17 +1353,20 @@ STANDAR WAJIB:
 2. Wilayah: hanya Jawa Tengah atau nasional Indonesia. Abaikan peristiwa luar negeri.
 3. Tentukan "primary_keyword": 2-4 kata, natural, spesifik, dan menjadi inti berita.
 4. "lead": satu kalimat pembuka yang HARUS dimulai dengan primary_keyword.
-5. Panjang artikel: {length_rules}.
-6. Primary keyword minimal muncul 3 kali di badan artikel (paragraf), TIDAK termasuk judul dan heading.
-7. Minimal satu subjudul H2 atau H3 harus mengandung primary_keyword. Kemunculan di heading ini TIDAK dihitung sebagai 3 kemunculan badan.
-8. "meta_description": 140-160 karakter, mengandung primary_keyword, dan TIDAK BOLEH lebih dari 160 karakter (spasi dan tanda baca dihitung).
-9. Judul: 55-80 karakter, menarik, clickbait etis, sesuai fakta, mengandung primary_keyword secara natural. Tulis SATU judul utuh. JANGAN menduplikasi judul atau menulis "Kata Kunci: Judul".
-10. JANGAN menyertakan tautan, URL, nama media, atau sumber berita di mana pun.
-11. JANGAN membuat bagian "Kaitan dengan Pemberitaan Sebelumnya". Artikel harus berdiri sendiri.
-12. Subjudul H2/H3 harus natural dan spesifik sesuai isi. DILARANG memakai heading generik "Kronologi dan Konteks", "Kaitan dengan Pemberitaan Sebelumnya", "Analisis", atau "Kesimpulan".
-13. Gunakan piramida terbalik: jawab apa, siapa, kapan, di mana, mengapa, bagaimana di paragraf awal.
-14. Paragraf pendek 2-4 kalimat. Gunakan kalimat aktif. Hindari pengulangan kata kunci berlebihan.
-15. Jangan mencantumkan instruksi ini atau menulis "sebagai AI".
+5. Panjang artikel: {length_rules}. Total artikel wajib 500-1500 kata.
+6. H1 hanya untuk judul artikel. JANGAN menulis H1 di dalam isi.
+7. Intro setelah judul maksimal 250 kata.
+8. Setiap blok di bawah H2/H3 maksimal 250 kata. Jika satu bagian lebih dari 250 kata, pecah dengan subjudul H3.
+9. Primary keyword minimal muncul 3 kali di badan artikel (paragraf), TIDAK termasuk judul dan heading.
+10. Minimal satu subjudul H2 atau H3 harus mengandung primary_keyword. Kemunculan di heading ini TIDAK dihitung sebagai 3 kemunculan badan.
+11. "meta_description": 140-160 karakter, mengandung primary_keyword, dan TIDAK BOLEH lebih dari 160 karakter (spasi dan tanda baca dihitung).
+12. Judul: 55-80 karakter, menarik, clickbait etis, sesuai fakta, mengandung primary_keyword secara natural. Tulis SATU judul utuh. JANGAN menduplikasi judul atau menulis "Kata Kunci: Judul".
+13. JANGAN menyertakan tautan, URL, nama media, atau sumber berita di mana pun.
+14. JANGAN membuat bagian "Kaitan dengan Pemberitaan Sebelumnya". Artikel harus berdiri sendiri.
+15. Subjudul H2/H3 harus natural dan spesifik sesuai isi. DILARANG memakai heading generik "Kronologi dan Konteks", "Kaitan dengan Pemberitaan Sebelumnya", "Analisis", "Kesimpulan", atau pola "Mengapa ... Jadi Sorotan?". DILARANG memakai kalimat template "Dampak ... menjadi bagian penting".
+16. Gunakan piramida terbalik: jawab apa, siapa, kapan, di mana, mengapa, bagaimana di paragraf awal.
+17. Paragraf pendek 2-4 kalimat. Gunakan kalimat aktif. Hindari pengulangan kata kunci berlebihan.
+18. Jangan mencantumkan instruksi ini atau menulis "sebagai AI".
 
 Balas dengan skema JSON:
 {{"title":"...","primary_keyword":"...","lead":"...","meta_description":"...","content":"<p>...</p><h2>...</h2><p>...</p>","category":"{suggested_category}","tags":["..."],"caption_instagram":"...","caption_tiktok":"..."}}"""
@@ -1302,8 +1405,8 @@ def fallback_article(candidate, details, category, primary_keyword):
         content += f"<p>{html.escape(sentence)}</p>"
 
     content += (
-        f"<p>Dampak {html.escape(keyword_display)} terhadap masyarakat menjadi bagian penting dari pemberitaan ini. "
-        f"Data dan respons pihak terkait mengenai {html.escape(keyword_display)} turut menentukan arah perkembangan.</p>"
+        f"<p>Pembahasan mengenai {html.escape(keyword_display)} mencakup latar belakang, dampak, dan informasi terbaru "
+        f"yang perlu diketahui pembaca. Data serta respons pihak terkait turut menentukan arah perkembangan isu ini.</p>"
     )
 
     excerpt = build_meta_description(keyword, lead)
@@ -1380,6 +1483,23 @@ def generate_article(candidate, categories, mode):
     if article is None or not article.get("content") or not article.get("title"):
         article = fallback_article(candidate, details, suggested_category, primary_keyword)
 
+    if article.get("engine") != "fallback":
+        issues = article_seo_issues(article, primary_keyword, mode)
+        if issues:
+            log("INFO", f"  Perbaikan otomatis: {len(issues)} masalah SEO.")
+            repaired = repair_article_with_llm(article, primary_keyword, categories, mode, issues, details)
+            if repaired:
+                article["title"] = repaired["title"]
+                article["meta_description"] = repaired["meta_description"]
+                article["content"] = repaired["content"]
+                if repaired.get("caption_instagram"):
+                    article["caption_instagram"] = repaired["caption_instagram"]
+                if repaired.get("caption_tiktok"):
+                    article["caption_tiktok"] = repaired["caption_tiktok"]
+                article["engine"] = repaired.get("engine", article.get("engine"))
+            else:
+                log("WARN", "Perbaikan otomatis gagal; artikel dipertahankan untuk diedit manual.")
+
     article = ensure_article_standards(article, primary_keyword, mode, lead_hint)
     article["primary_keyword"] = primary_keyword
     article["category"] = suggested_category
@@ -1393,6 +1513,10 @@ def generate_article(candidate, categories, mode):
     if not is_indonesian_text(article.get("title", "") + " " + article.get("content", "")):
         log("WARN", f"Artikel dilewati karena bukan bahasa Indonesia: {article.get('title', '')[:80]}")
         return None
+
+    remaining_issues = article_seo_issues(article, primary_keyword, mode)
+    if remaining_issues:
+        log("WARN", "Sisa masalah SEO: " + "; ".join(remaining_issues))
 
     word_count = len(re.findall(r"\w+", strip_html(article.get("content", ""))))
     min_fallback_words = 200 if mode == "breaking" else 300
