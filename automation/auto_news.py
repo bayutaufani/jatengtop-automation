@@ -924,6 +924,167 @@ def make_captions(title, excerpt, article_url, tags):
     return {"instagram": instagram[:2200], "tiktok": tiktok[:2200]}
 
 
+def normalize_phrase(text):
+    text = unicodedata.normalize("NFKD", (text or "").lower())
+    text = re.sub(r"[^\w\s]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def derive_primary_keyword(candidate):
+    trend = (candidate.get("trend") or "").strip()
+    title = candidate.get("title") or ""
+
+    if trend and normalize_phrase(trend) in normalize_phrase(title):
+        return trend
+
+    generic_words = {
+        "korban", "dapat", "bantuan", "rumah", "dari", "pemprov", "jateng",
+        "akan", "terus", "pantau", "kata", "soal", "usai", "jadi", "bisa",
+        "ada", "lebih", "baru", "terbaru", "ini", "itu", "dan", "yang",
+        "di", "ke", "untuk", "dengan", "pada", "dalam", "bagi", "demi",
+        "hingga", "antara", "sebuah", "tersebut", "menjadi", "adalah",
+        "banyak", "dua", "tiga", "satu", "ancam", "imbangi", "minta",
+        "siapkan", "gelar", "geledah", "sebut", "bakal", "kunjungi",
+        "resmi", "luncurkan", "menang", "kalah", "naik", "turun", "bikin",
+        "ubah", "tinjau", "waspada", "soroti", "ungkap", "beber", "bongkar",
+        "tangkap", "imbau", "ajak", "dorong", "tekan", "minta", "daerah",
+        "wilayah", "sejumlah", "hingga", "sampai", "selama", "januari",
+        "februari", "maret", "april", "mei", "juni", "juli", "agustus",
+        "september", "oktober", "november", "desember", "senin", "selasa",
+        "rabu", "kamis", "jumat", "sabtu", "minggu", "hari", "tanggal",
+    }
+    words = [
+        word for word in re.findall(r"[A-Za-zÀ-ÿ0-9]+", title)
+        if word.lower() not in generic_words and not word.isdigit()
+    ]
+
+    title_lower = title.lower()
+    if "jawa tengah" in title_lower or "jateng" in title_lower:
+        words = [word for word in words if word.lower() not in {"jawa", "tengah", "jateng"}]
+        keyword = " ".join(words[:3]).strip()
+        keyword = f"{keyword} Jawa Tengah" if keyword else "Jawa Tengah"
+    else:
+        keyword = " ".join(words[:3]).strip()
+
+    return keyword or "Jawa Tengah"
+
+
+def build_meta_description(keyword, text, max_chars=160):
+    keyword = (keyword or "").strip()
+    text = re.sub(r"\s+", " ", strip_html(text)).strip()
+
+    if keyword:
+        pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+        if not pattern.search(text):
+            text = f"{keyword}: {text}"
+        elif not text.lower().startswith(keyword.lower()):
+            without_keyword = pattern.sub("", text, count=1).strip(" :-—")
+            text = f"{keyword}: {without_keyword}"
+
+    if len(text) > max_chars:
+        truncated = text[:max_chars].rstrip()
+        if " " in truncated:
+            truncated = truncated[:truncated.rfind(" ")].rstrip()
+        truncated = truncated.rstrip(" ,.;:-")
+        if truncated and truncated[-1] not in ".!?":
+            if len(truncated) < max_chars:
+                truncated += "."
+            else:
+                truncated = truncated[:-1].rstrip() + "."
+        text = truncated
+
+    return text[:max_chars]
+
+
+def ensure_article_standards(article, keyword, mode, lead_hint="", related=None):
+    keyword = (keyword or "").strip()
+    keyword_norm = normalize_phrase(keyword)
+    soup = BeautifulSoup(article.get("content", ""), "html.parser")
+
+    # Buang paragraf disclaimer yang tidak profesional.
+    for paragraph in soup.find_all("p"):
+        text = paragraph.get_text(" ", strip=True).lower()
+        if "informasi ini masih dapat berkembang" in text or "yang perlu dicermati" in text:
+            paragraph.decompose()
+
+    lead_text = strip_html(lead_hint) if lead_hint else ""
+    first_p = soup.find("p")
+
+    if first_p is None:
+        first_p = soup.new_tag("p")
+        first_p.string = lead_text or f"{keyword.title()} menjadi perhatian dalam perkembangan terbaru."
+        soup.insert(0, first_p)
+    else:
+        first_text = first_p.get_text(" ", strip=True)
+        if keyword_norm and not normalize_phrase(first_text).startswith(keyword_norm):
+            if lead_text and normalize_phrase(lead_text).startswith(keyword_norm):
+                first_p.string = lead_text + " " + first_text
+            else:
+                first_p.string = f"{keyword.title()} — {first_text}"
+
+    headings = soup.find_all(["h2", "h3"])
+    has_heading_keyword = any(
+        keyword_norm and keyword_norm in normalize_phrase(heading.get_text(" ", strip=True))
+        for heading in headings
+    )
+    if keyword_norm and not has_heading_keyword:
+        if headings:
+            heading = headings[0]
+            old_text = heading.get_text(" ", strip=True)
+            heading.string = f"{keyword.title()}: {old_text}"
+        else:
+            heading = soup.new_tag("h2")
+            heading.string = f"{keyword.title()}: Kronologi dan Dampak"
+            target = soup.find("p")
+            if target:
+                target.insert_after(heading)
+            else:
+                soup.insert(0, heading)
+
+    body_text = " ".join(paragraph.get_text(" ", strip=True) for paragraph in soup.find_all("p"))
+    keyword_count = body_text.lower().count(keyword.lower()) if keyword else 0
+
+    if keyword and keyword_count < 3:
+        extra = soup.new_tag("p")
+        if related:
+            extra.string = (
+                f"Pemberitaan sebelumnya tentang {keyword} turut membentuk konteks perkembangan ini. "
+                f"Jateng TOP mencatat sejumlah laporan terkait {keyword} yang relevan bagi pembaca."
+            )
+        else:
+            extra.string = (
+                f"Perkembangan {keyword} menjadi bagian dari isu yang terus dipantau. "
+                f"Pembahasan {keyword} mencakup dampak dan respons pihak terkait."
+            )
+        soup.append(extra)
+
+    article["content"] = str(soup)
+    article["meta_description"] = build_meta_description(
+        keyword,
+        article.get("meta_description") or body_text,
+    )
+
+    plain_text = strip_html(article["content"])
+    words = len(re.findall(r"\w+", plain_text))
+    sentences = len([part for part in re.split(r"[.!?]+", plain_text) if part.strip()])
+    paragraphs = len(soup.find_all("p"))
+    headings_count = len(soup.find_all(["h2", "h3"]))
+    body_text = " ".join(paragraph.get_text(" ", strip=True) for paragraph in soup.find_all("p"))
+    keyword_count = body_text.lower().count(keyword.lower()) if keyword else 0
+    meta_length = len(article["meta_description"])
+
+    log(
+        "INFO",
+        f"  SEO: {words} kata | {sentences} kalimat | {paragraphs} paragraf | "
+        f"{headings_count} heading | keyword {keyword_count}x | meta {meta_length} char",
+    )
+    minimum_words = 300 if mode == "breaking" else 500
+    if words < minimum_words:
+        log("WARN", f"  Panjang artikel di bawah target: {words} kata (minimum {minimum_words}).")
+
+    return article
+
+
 # ---------------------------------------------------------------------------
 # GENERATOR
 # ---------------------------------------------------------------------------
@@ -943,7 +1104,7 @@ def build_prompt(candidate, details, related, categories, mode):
     )
 
     system = (
-        "Anda editor senior Jateng TOP, portal berita berbahasa Indonesia yang menjunjung akurasi. "
+        "Anda editor senior Jateng TOP, portal berita berbahasa Indonesia yang menjunjung akurasi dan SEO. "
         "WAJIB menulis 100% dalam bahasa Indonesia baku. Seluruh judul, isi, meta description, dan caption "
         "harus berbahasa Indonesia. Jangan pernah menulis dalam bahasa Inggris. Jika sumber berbahasa Inggris, "
         "terjemahkan faktanya ke bahasa Indonesia. "
@@ -951,11 +1112,13 @@ def build_prompt(candidate, details, related, categories, mode):
         "Jangan membahas berita internasional kecuali berkaitan langsung dengan Indonesia. "
         "Tulis ulang informasi menjadi artikel orisinal bergaya jurnalistik, SEO-friendly, dan mudah dibaca. "
         "Jangan menyalin kalimat sumber. Jangan mengarang nama, angka, kutipan, atau kronologi yang tidak didukung fakta. "
-        "Jika informasi terbatas, gunakan bahasa hati-hati dan sebutkan keterbatasan data. "
         "Output HARUS JSON valid tanpa markdown dan tanpa code fence."
     )
 
-    length_instruction = "350-500 kata" if mode == "breaking" else "600-900 kata"
+    if mode == "breaking":
+        length_rules = "300-500 kata, 18-30 kalimat, 4-7 paragraf, 1-2 subjudul H2/H3"
+    else:
+        length_rules = "600-900 kata, 35-55 kalimat, 6-10 paragraf, 2-4 subjudul H2/H3"
 
     user = f"""Topik berita: {candidate.get('title')}
 Sumber: {candidate.get('source_name') or '-'} ({candidate.get('source_url')})
@@ -972,31 +1135,36 @@ Berita internal Jateng TOP yang relevan (untuk konteks dan internal linking):
 Kategori tersedia: {category_names}
 Kategori yang WAJIB dipakai: {suggested_category}
 
-Tugas:
-1. Tulis artikel {length_instruction} DALAM BAHASA INDONESIA.
-2. Fokus pada wilayah Jawa Tengah atau nasional Indonesia. Abaikan peristiwa luar negeri.
-3. Struktur HTML: paragraf pembuka, minimal 2 subjudul <h2>, konteks, dampak, dan penutup.
-4. Jika ada berita internal relevan, sertakan minimal 1 tautan internal memakai URL yang diberikan dengan anchor alami.
-5. Judul maksimal 110 karakter, informatif, tidak clickbait berlebihan.
-6. Meta description 150-160 karakter.
-7. Gunakan tepat kategori: {suggested_category}.
-8. Buat caption Instagram dan TikTok siap pakai dalam bahasa Indonesia, boleh menyertakan hashtag.
-9. Jangan mencantumkan instruksi ini atau menulis "sebagai AI".
-10. Jangan menulis satu kalimat pun dalam bahasa Inggris.
+STANDAR WAJIB:
+1. Bahasa: 100% bahasa Indonesia. Tidak boleh ada kalimat bahasa Inggris.
+2. Wilayah: hanya Jawa Tengah atau nasional Indonesia. Abaikan peristiwa luar negeri.
+3. Tentukan "primary_keyword": 2-4 kata, natural, spesifik, dan menjadi inti berita.
+4. "lead": satu kalimat pembuka yang HARUS dimulai dengan primary_keyword.
+5. Panjang artikel: {length_rules}.
+6. Primary keyword minimal muncul 3 kali di badan artikel (paragraf), TIDAK termasuk judul dan heading.
+7. Minimal satu subjudul H2 atau H3 harus mengandung primary_keyword. Kemunculan di heading ini TIDAK dihitung sebagai 3 kemunculan badan.
+8. "meta_description": 140-160 karakter, mengandung primary_keyword, dan TIDAK BOLEH lebih dari 160 karakter (spasi dan tanda baca dihitung).
+9. Judul: 55-80 karakter, informatif, mengandung primary_keyword jika natural.
+10. Sertakan 2-3 tautan internal dari daftar URL di atas dengan anchor alami.
+11. Gunakan piramida terbalik: jawab apa, siapa, kapan, di mana, mengapa, bagaimana di paragraf awal.
+12. Paragraf pendek 2-4 kalimat. Gunakan kalimat aktif. Hindari pengulangan kata kunci berlebihan.
+13. Jangan mencantumkan instruksi ini atau menulis "sebagai AI".
 
 Balas dengan skema JSON:
-{{"title":"...","meta_description":"...","content":"<p>...</p>","category":"{suggested_category}","tags":["..."],"caption_instagram":"...","caption_tiktok":"..."}}"""
+{{"title":"...","primary_keyword":"...","lead":"...","meta_description":"...","content":"<p>...</p><h2>...</h2><p>...</p>","category":"{suggested_category}","tags":["..."],"caption_instagram":"...","caption_tiktok":"..."}}"""
 
     return system, user
 
 
-def fallback_article(candidate, details, related, category):
+def fallback_article(candidate, details, related, category, primary_keyword):
+    keyword = (primary_keyword or derive_primary_keyword(candidate)).strip()
     title = strip_html(candidate.get("title") or "", 120) or "Perkembangan Terbaru"
+
     if not is_indonesian_text(title):
         title = (
-            "Perkembangan Terbaru di Jawa Tengah"
+            f"Perkembangan {keyword} di Jawa Tengah"
             if category == "Jawa Tengah"
-            else "Perkembangan Terbaru Nasional"
+            else f"Perkembangan {keyword} Nasional"
         )
 
     source_text = details.get("text") or candidate.get("description") or ""
@@ -1006,14 +1174,16 @@ def fallback_article(candidate, details, related, category):
     sentences = re.split(r"(?<=[.!?])\s+", strip_html(source_text))
     sentences = [sentence.strip() for sentence in sentences if len(sentence.strip()) > 60]
 
-    lead = sentences[0] if sentences else f"Informasi awal mengenai {title} masih terus berkembang."
-    body_sentences = sentences[1:6]
+    lead = sentences[0] if sentences else f"{keyword.title()} menjadi perhatian dalam perkembangan terbaru."
+    if not normalize_phrase(lead).startswith(normalize_phrase(keyword)):
+        lead = f"{keyword.title()} — {lead}"
+
+    body_sentences = sentences[1:7]
 
     content = f"<p>{html.escape(lead)}</p>"
-    if body_sentences:
-        content += "<h2>Kronologi dan Konteks</h2>"
-        for sentence in body_sentences:
-            content += f"<p>{html.escape(sentence)}</p>"
+    content += f"<h2>{html.escape(keyword.title())}: Kronologi dan Konteks</h2>"
+    for sentence in body_sentences:
+        content += f"<p>{html.escape(sentence)}</p>"
 
     if related:
         content += "<h2>Kaitan dengan Pemberitaan Sebelumnya</h2>"
@@ -1025,13 +1195,12 @@ def fallback_article(candidate, details, related, category):
             content += f"<p>{ref_excerpt}</p>"
             content += f"<p><a href=\"{ref_url}\">Baca pemberitaan sebelumnya</a></p>"
 
-    content += "<h2>Yang Perlu Dicermati</h2>"
     content += (
-        "<p>Informasi ini masih dapat berkembang. Pembaca disarankan memantau pembaruan resmi "
-        "dan membandingkan beberapa sumber sebelum mengambil kesimpulan.</p>"
+        f"<p>Pembahasan mengenai {html.escape(keyword)} ini merangkum fakta yang sudah terverifikasi. "
+        f"Perkembangan {html.escape(keyword)} selanjutnya akan diperbarui melalui kanal resmi Jateng TOP.</p>"
     )
 
-    excerpt = strip_html(lead, 155)
+    excerpt = build_meta_description(keyword, lead)
     captions = make_captions(
         title,
         excerpt,
@@ -1040,6 +1209,7 @@ def fallback_article(candidate, details, related, category):
     )
     return {
         "title": title,
+        "primary_keyword": keyword,
         "meta_description": excerpt,
         "content": content,
         "category": category,
@@ -1069,13 +1239,27 @@ def generate_article(candidate, categories, mode):
     except Exception as exc:
         log("WARN", f"Gagal mengambil konteks internal: {exc}")
 
+    source_text = details.get("text") or candidate.get("description") or ""
+    min_source_chars = 250 if mode == "breaking" else 400
+    if len(strip_html(source_text)) < min_source_chars and not related:
+        log("WARN", "Sumber terlalu minim dan tidak ada konteks internal; kandidat dilewati.")
+        return None
+
     system, user = build_prompt(candidate, details, related, categories, mode)
     provider, raw = call_llm(system, user)
     article = None
+    primary_keyword = ""
+    lead_hint = ""
 
     if raw:
         parsed = parse_json_response(raw)
         if parsed and parsed.get("title") and parsed.get("content"):
+            primary_keyword = str(parsed.get("primary_keyword", "")).strip()
+            if not primary_keyword or not is_indonesian_text(primary_keyword):
+                primary_keyword = derive_primary_keyword(candidate)
+            primary_keyword = primary_keyword[:80]
+            lead_hint = str(parsed.get("lead", "")).strip()
+
             candidate_article = {
                 "title": str(parsed.get("title", "")).strip(),
                 "meta_description": str(parsed.get("meta_description", "")).strip(),
@@ -1091,16 +1275,34 @@ def generate_article(candidate, categories, mode):
             else:
                 log("WARN", "Output LLM terdeteksi bukan bahasa Indonesia; memakai fallback.")
 
-    if article is None or not article.get("content") or not article.get("title"):
-        article = fallback_article(candidate, details, related, suggested_category)
+    if not primary_keyword:
+        primary_keyword = derive_primary_keyword(candidate)
 
+    if article is None or not article.get("content") or not article.get("title"):
+        article = fallback_article(candidate, details, related, suggested_category, primary_keyword)
+
+    article = ensure_article_standards(article, primary_keyword, mode, lead_hint, related)
+    article["primary_keyword"] = primary_keyword
     article["category"] = suggested_category
+
+    if primary_keyword and normalize_phrase(primary_keyword) not in normalize_phrase(article.get("title", "")):
+        article["title"] = f"{primary_keyword.title()}: {article['title']}"
+
     if not is_indonesian_text(article.get("title", "") + " " + article.get("content", "")):
         log("WARN", f"Artikel dilewati karena bukan bahasa Indonesia: {article.get('title', '')[:80]}")
         return None
 
+    word_count = len(re.findall(r"\w+", strip_html(article.get("content", ""))))
+    min_fallback_words = 200 if mode == "breaking" else 300
+    if article.get("engine") == "fallback" and word_count < min_fallback_words:
+        log("WARN", f"Fallback hanya {word_count} kata; kandidat dilewati.")
+        return None
+
     if not is_indonesian_text(article.get("meta_description", "")):
-        article["meta_description"] = strip_html(article.get("content", ""), 155)
+        article["meta_description"] = build_meta_description(
+            primary_keyword,
+            strip_html(article.get("content", ""), 150),
+        )
 
     if not is_indonesian_text(article.get("caption_instagram", "")):
         article["caption_instagram"] = ""
@@ -1119,8 +1321,9 @@ def generate_article(candidate, categories, mode):
 
     return {
         "title": article["title"][:255],
+        "primary_keyword": primary_keyword,
         "content": article["content"],
-        "meta_description": article.get("meta_description", "")[:255],
+        "meta_description": article.get("meta_description", "")[:160],
         "category": suggested_category,
         "categories": [suggested_category],
         "location": "Jawa Tengah" if candidate.get("is_jateng") else "",
@@ -1225,7 +1428,7 @@ def main():
         return 1
 
     limit = BREAKING_MAX if args.mode == "breaking" else NEWS_COUNT
-    selected = select_candidates(fresh, limit, args.mode)
+    selected = select_candidates(fresh, limit + 3, args.mode)
 
     if not selected:
         log("INFO", "Semua kandidat sudah pernah diberitakan. Tidak ada artikel baru.")
@@ -1239,6 +1442,8 @@ def main():
 
     items = []
     for index, candidate in enumerate(selected, start=1):
+        if len(items) >= limit:
+            break
         log("INFO", f"[{index}/{len(selected)}] Menulis: {candidate.get('title')}")
         try:
             article = generate_article(candidate, categories, args.mode)
@@ -1250,6 +1455,9 @@ def main():
         except Exception as exc:
             log("ERROR", f"Gagal menulis artikel: {exc}")
         time.sleep(1.5)
+
+    if len(items) < limit:
+        log("WARN", f"Hanya {len(items)} artikel yang lolos standar dari target {limit}.")
 
     if not items:
         log("ERROR", "Tidak ada artikel yang berhasil dibuat.")
