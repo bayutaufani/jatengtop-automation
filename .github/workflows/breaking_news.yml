@@ -16,15 +16,15 @@ concurrency:
 
 jobs:
   watch:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: 'pip'
@@ -34,14 +34,31 @@ jobs:
         run: pip install -r automation/requirements.txt
 
       - name: Check breaking news
+        id: generate
+        continue-on-error: true
         env:
           SITE_BASE_URL: ${{ secrets.SITE_BASE_URL }}
           AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           LLM_PROVIDER: auto
-          GEMINI_MODEL: gemini-2.5-flash
-          GROQ_MODEL: llama-3.3-70b-versatile
+          GEMINI_MODEL: gemini-flash-latest
+          GROQ_MODEL: openai/gpt-oss-120b
           BREAKING_MAX: '2'
+          JATENG_COUNT: '2'
           BREAKING_TRAFFIC_THRESHOLD: '200'
-        run: python automation/auto_news.py --mode breaking
+        run: |
+          set -o pipefail
+          python automation/auto_news.py --mode breaking 2>&1 | tee auto_news.log
+
+      - name: Tampilkan error
+        if: steps.generate.outcome == 'failure'
+        run: |
+          echo "## Auto News gagal" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 30 auto_news.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Hentikan job jika gagal
+        if: steps.generate.outcome == 'failure'
+        run: exit 1
