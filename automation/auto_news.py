@@ -33,10 +33,16 @@ SITE_BASE_URL = os.getenv("SITE_BASE_URL", "").rstrip("/")
 AUTOMATION_TOKEN = os.getenv("AUTOMATION_TOKEN", "")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower()
+
+# Kompatibilitas: model lama sudah dihentikan oleh penyedia.
+if not GEMINI_MODEL or GEMINI_MODEL == "gemini-2.5-flash":
+    GEMINI_MODEL = "gemini-flash-latest"
+if GROQ_MODEL in ("", "llama-3.3-70b-versatile", "llama3-70b-8192", "mixtral-8x7b-32768"):
+    GROQ_MODEL = "openai/gpt-oss-120b"
 
 NEWS_COUNT = int(os.getenv("NEWS_COUNT", "5"))
 BREAKING_MAX = int(os.getenv("BREAKING_MAX", "2"))
@@ -324,8 +330,11 @@ def is_indonesian_text(text):
         "purbalingga", "banjarnegara", "kebumen", "temanggung", "boyolali",
         "klaten", "sragen", "blora", "rembang", "pati", "grobogan", "brebes",
         "pemalang", "batang", "karanganyar", "wonogiri", "sukoharjo",
-        "kecamatan", "polisi", "pemkot", "pemprov", "warga", "menteri",
-        "presiden", "pemilu", "harga", "pasar", "gubernur", "walikota",
+        "kecamatan", "kelurahan", "polisi", "pemkot", "pemprov", "pemkab",
+        "pemda", "warga", "menteri", "presiden", "pemilu", "harga", "pasar",
+        "gubernur", "walikota", "bupati", "dpr", "dprd", "kpu", "pilkada",
+        "pemerintah", "provinsi", "kabupaten", "kota", "masyarakat",
+        "jateng", "nasional", "prabowo", "kebijakan", "rapat",
     )
     return any(marker in text for marker in markers)
 
@@ -711,6 +720,9 @@ def filter_new_candidates(candidates):
                 "origin": item.get("origin", ""),
                 "trend": item.get("trend", ""),
                 "is_google_news": bool(item.get("is_google_news")),
+                "is_jateng": bool(item.get("is_jateng")),
+                "is_listicle": bool(item.get("is_listicle")),
+                "suggested_category": item.get("suggested_category", ""),
             }
             for item in candidates[:50]
         ]
@@ -891,13 +903,14 @@ def call_llm(system_prompt, user_prompt):
         text = call_groq(system_prompt, user_prompt)
         return ("groq", text) if text else (None, None)
 
-    text = call_gemini(system_prompt, user_prompt)
-    if text:
-        return "gemini", text
-
+    # Groq lebih stabil dan modelnya tersedia; Gemini sebagai cadangan.
     text = call_groq(system_prompt, user_prompt)
     if text:
         return "groq", text
+
+    text = call_gemini(system_prompt, user_prompt)
+    if text:
+        return "gemini", text
 
     return None, None
 
@@ -1520,7 +1533,7 @@ def main():
         return 1
 
     limit = BREAKING_MAX if args.mode == "breaking" else NEWS_COUNT
-    selected = select_candidates(fresh, limit + 3, args.mode)
+    selected = select_candidates(fresh, limit + 10, args.mode)
 
     if not selected:
         log("INFO", "Semua kandidat sudah pernah diberitakan. Tidak ada artikel baru.")
